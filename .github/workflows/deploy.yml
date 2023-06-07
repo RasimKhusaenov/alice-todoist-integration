@@ -1,0 +1,25 @@
+name: Deploy function in Yandex Cloud
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  run_main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: yc-actions/yc-sls-function@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+          folder-id: 'b1g36e1128dihtl19u5u'
+          function-name: 'todoist'
+          runtime: 'python311'
+          entrypoint: 'todoist.handler.handler'
+          include: |
+            ./todoist
+            requirements.txt
+          service-account: 'aje32qn43v45375lclo7'
+          secrets: |
+            TODOIST_APP_TOKEN=e6qiuj00j48c49cfuarh/e6q1bv6ngte37urabgg5/TODOIST_APP_TOKEN
