@@ -31,9 +31,9 @@ class TaskFilter(enum.Enum):
 class TaskPosition(enum.Enum):
     @classmethod
     def from_request(cls, request: Request):
-        slot = request.session.get('position', {}).get('value', '')
+        slot = request.session.get('position', {}).get('value', 0)
 
-        return int(slot) if slot.isdigit() else 0
+        return slot
 
 
 def move_to_position(request: Request):
@@ -125,14 +125,16 @@ class TasksList(TodoistScene):
         if current_index == 0:
             texts.append(f"Сейчас у вас {tasks_count} задач в списке.")
         if tasks_count >= current_position:
-            texts.append(f"Задача №{current_position}: {tasks[current_index].content}")
-        if current_position == tasks_count:
+            texts.append(f"Задача №{current_position}: {tasks[current_index].content}.")
+        if current_position == tasks_count and tasks_count == 0:
             texts.append("Хотите добавить?")
+        elif current_position == tasks_count and tasks_count > 0:
+            texts.append("Хотите добавить ещё задачу?")
 
         text = " ".join(texts)
 
         return self.make_response(text, state={
-            'position': current_index,
+            'position': { 'value': current_index },
             'time': {'value': current_filter}
         })
 
