@@ -31,7 +31,7 @@ class TaskFilter(enum.Enum):
 class TaskPosition(enum.Enum):
     @classmethod
     def from_request(cls, request: Request):
-        slot = request.session.get('position', {}).get('value')
+        slot = request.session.get('position', {}).get('value', '')
 
         return int(slot) if slot.isdigit() else 0
 
