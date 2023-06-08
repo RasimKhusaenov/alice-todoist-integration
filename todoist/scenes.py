@@ -20,7 +20,8 @@ class TaskFilter(enum.Enum):
 
     @classmethod
     def from_request(cls, request: Request, intent_name: str):
-        current_filter = request.intents[intent_name]['slots']['time']['value']
+        time_from_intent = request.intents[intent_name]['slots']['time']['value']
+        current_filter = time_from_intent or request.session.get('time', {}).get('value')
         if current_filter == 'today':
             return cls.TODAY
         elif current_filter == 'tomorrow':
@@ -29,14 +30,14 @@ class TaskFilter(enum.Enum):
 
 class TaskPosition(enum.Enum):
     @classmethod
-    def from_request(cls, request: Request, intent_name: str):
-        slot = request.intents[intent_name]['slots']['position']['value']
+    def from_request(cls, request: Request):
+        slot = request.session.get('position', {}).get('value')
 
         return int(slot) if slot.isdigit() else 0
 
 
-def move_to_position(request: Request, intent_name: str):
-    position = TaskPosition.from_request(request, intent_name)
+def move_to_position(request: Request):
+    position = TaskPosition.from_request(request)
 
     return position
 
@@ -113,22 +114,31 @@ class Welcome(TodoistScene):
 
 class TasksList(TodoistScene):
     def reply(self, request: Request):
+        current_index = TaskPosition.from_request(request)
+        current_position = current_index + 1
         current_filter = TaskFilter.from_request(request, intents.GET_NEAREST_TASKS).value
         tasks = api.get_tasks(filter=current_filter)
+        tasks_count = len(tasks)
 
-        text = f"Сейчас у вас {len(tasks)} задач в списке."
+        texts = []
 
-        if len(tasks) > 0:
-            additional_text = f"Первая задача: {tasks[0].content}"
-        else:
-            additional_text = "Хотите добавить?"
-        text += additional_text
+        if current_index == 0:
+            texts.append(f"Сейчас у вас {tasks_count} задач в списке.")
+        if tasks_count >= current_position:
+            texts.append(f"Задача №{current_position}: {tasks[current_index].content}")
+        if current_position == tasks_count:
+            texts.append("Хотите добавить?")
 
-        return self.make_response(text)
+        text = " ".join(texts)
+
+        return self.make_response(text, state={
+            'position': current_index,
+            'time': {'value': current_filter}
+        })
 
     def handle_local_intents(self, request: Request):
         if intents.GET_NEXT_TASK:
-            return move_to_position(request, intents.GET_NEXT_TASK)
+            return TasksList()
 
 
 def _list_scenes():
