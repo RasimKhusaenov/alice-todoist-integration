@@ -20,7 +20,7 @@ class TaskFilter(enum.Enum):
 
     @classmethod
     def from_request(cls, request: Request, intent_name: str):
-        time_from_intent = request.intents[intent_name]['slots']['time']['value']
+        time_from_intent = request.intents[intent_name].get('slots', {}).get('time', {}).get('value', {})
         current_filter = time_from_intent or request.session.get('time', {}).get('value')
         if current_filter == 'today':
             return cls.TODAY
