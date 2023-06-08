@@ -20,7 +20,7 @@ class TaskFilter(enum.Enum):
 
     @classmethod
     def from_request(cls, request: Request, intent_name: str):
-        time_from_intent = request.intents[intent_name].get('slots', {}).get('time', {}).get('value', {})
+        time_from_intent = request.intents[intent_name].get('slots', {}).get('time', {}).get('value')
         current_filter = time_from_intent or request.session.get('time', {}).get('value')
         if current_filter == 'today':
             return cls.TODAY
@@ -116,7 +116,8 @@ class TasksList(TodoistScene):
     def reply(self, request: Request):
         current_index = TaskPosition.from_request(request)
         current_position = current_index + 1
-        current_filter = TaskFilter.from_request(request, intents.GET_NEAREST_TASKS).value
+        current_intent = intents.GET_NEAREST_TASKS if current_index == 0 else intents.GET_NEXT_TASK
+        current_filter = TaskFilter.from_request(request, current_intent).value
         tasks = api.get_tasks(filter=current_filter)
         tasks_count = len(tasks)
 
@@ -134,7 +135,7 @@ class TasksList(TodoistScene):
         text = " ".join(texts)
 
         return self.make_response(text, state={
-            'position': { 'value': current_index },
+            'position': {'value': current_position},
             'time': {'value': current_filter}
         })
 
