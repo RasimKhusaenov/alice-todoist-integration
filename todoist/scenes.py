@@ -177,7 +177,7 @@ class TasksList(TodoistScene):
 
 class CreateTask(TodoistScene):
     def reply(self, request):
-        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value'].capitalize()
+        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
         task_content = task_content[0].upper() + task_content[1:]
 
         task_due_date = Time.from_request_slot(request, intents.CREATE_TASK, 'when')
