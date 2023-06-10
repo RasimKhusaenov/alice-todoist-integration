@@ -98,6 +98,8 @@ class TodoistScene(Scene):
     def handle_global_intents(self, request):
         if intents.GET_NEAREST_TASKS in request.intents:
             return TasksList()
+        elif intents.CREATE_TASK in request.intents:
+            return CreateTask()
 
 
 class Welcome(TodoistScene):
@@ -121,6 +123,22 @@ class TasksList(TodoistScene):
         for index, task in enumerate(tasks):
             position = index + 1
             texts.append(f"\n- {position}: {task.content}.")
+
+        text = " ".join(texts)
+
+        return self.make_response(text)
+
+    def handle_local_intents(self, request: Request):
+        pass
+
+
+class CreateTask(TodoistScene):
+    def reply(self, request):
+        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
+        task = api.add_task(task_content)
+
+        due_date = f"на {task.due}" if task.due else ""
+        texts = ["Создала задачу", due_date, task.content]
 
         text = " ".join(texts)
 
