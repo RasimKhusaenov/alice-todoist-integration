@@ -20,7 +20,8 @@ class TaskFilter(enum.Enum):
 
     @classmethod
     def from_request(cls, request: Request, intent_name: str):
-        current_filter = request.intents[intent_name]['slots']['time']['value']
+        time_from_intent = request.intents[intent_name].get('slots', {}).get('time', {}).get('value')
+        current_filter = time_from_intent or request.session.get('time', {}).get('value')
         if current_filter == 'today':
             return cls.TODAY
         elif current_filter == 'tomorrow':
@@ -29,14 +30,14 @@ class TaskFilter(enum.Enum):
 
 class TaskPosition(enum.Enum):
     @classmethod
-    def from_request(cls, request: Request, intent_name: str):
-        slot = request.intents[intent_name]['slots']['position']['value']
+    def from_request(cls, request: Request):
+        slot = request.session.get('position', {}).get('value', 0)
 
-        return int(slot) if slot.isdigit() else 0
+        return slot
 
 
-def move_to_position(request: Request, intent_name: str):
-    position = TaskPosition.from_request(request, intent_name)
+def move_to_position(request: Request):
+    position = TaskPosition.from_request(request)
 
     return position
 
@@ -48,13 +49,11 @@ class Scene(ABC):
         return cls.__name__
 
     """Генерация ответа сцены"""
-
     @abstractmethod
     def reply(self, request):
         raise NotImplementedError()
 
     """Проверка перехода к новой сцене"""
-
     def move(self, request: Request):
         next_scene = self.handle_local_intents(request)
         if next_scene is None:
@@ -103,8 +102,8 @@ class TodoistScene(Scene):
 
 class Welcome(TodoistScene):
     def reply(self, request: Request):
-        text = ('Привет! Я помогу управлять вашими задачами в Todoist.')
-        tts = ('Привет! Я помогу управлять вашими задачами в Tod+oist.')
+        text = 'Привет! Я помогу управлять вашими задачами в Todoist.'
+        tts = 'Привет! Я помогу управлять вашими задачами в Tod+oist.'
         return self.make_response(text, tts=tts)
 
     def handle_local_intents(self, request: Request):
@@ -115,20 +114,20 @@ class TasksList(TodoistScene):
     def reply(self, request: Request):
         current_filter = TaskFilter.from_request(request, intents.GET_NEAREST_TASKS).value
         tasks = api.get_tasks(filter=current_filter)
+        tasks_count = len(tasks)
 
-        text = f"Сейчас у вас {len(tasks)} задач в списке."
+        texts = [f"Сейчас у вас {tasks_count} задач в списке:"]
 
-        if len(tasks) > 0:
-            additional_text = f"Первая задача: {tasks[0].content}"
-        else:
-            additional_text = "Хотите добавить?"
-        text += additional_text
+        for index, task in enumerate(tasks):
+            position = index + 1
+            texts.append(f"\n- {position}: {task.content}.")
+
+        text = " ".join(texts)
 
         return self.make_response(text)
 
     def handle_local_intents(self, request: Request):
-        if intents.GET_NEXT_TASK:
-            return move_to_position(request, intents.GET_NEXT_TASK)
+        pass
 
 
 def _list_scenes():

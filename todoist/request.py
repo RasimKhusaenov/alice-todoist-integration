@@ -1,3 +1,6 @@
+from todoist.state import STATE_REQUEST_KEY
+
+
 class Request:
     def __init__(self, request_body):
         self.request_body = request_body
@@ -12,3 +15,7 @@ class Request:
     @property
     def type(self):
         return self.request_body.get('request', {}).get('type')
+
+    @property
+    def session(self):
+        return self.request_body.get('state', {}).get(STATE_REQUEST_KEY, {})
