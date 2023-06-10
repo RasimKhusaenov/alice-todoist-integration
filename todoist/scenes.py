@@ -29,9 +29,9 @@ class TaskFilter(enum.Enum):
             return cls.TOMORROW
 
 
-class SlotTime:
+class Time:
     @classmethod
-    def from_request(cls, request: Request, intent_name: str, time_key: str) -> Optional[date]:
+    def from_request_slot(cls, request: Request, intent_name: str, time_key: str) -> Optional[date]:
         time_from_intent = request.intents[intent_name].get('slots', {}).get(time_key, {})
 
         if time_from_intent['type'] != 'YANDEX.DATETIME':
@@ -47,6 +47,27 @@ class SlotTime:
             day = time_from_intent['value'].get('day', today.day)
             return date(year, month, day)
 
+    @classmethod
+    def make_relative(cls, absolute_date: date) -> str:
+        today = date.today()
+        if absolute_date == today:
+            return "сегодня"
+        elif absolute_date > today:
+            if absolute_date == today + timedelta(days=1):
+                return "завтра"
+            elif absolute_date == today + timedelta(days=2):
+                return "послезавтра"
+            elif absolute_date.year == today.year:
+                return absolute_date.strftime("%d %B")
+            else:
+                return absolute_date.strftime("%d %B %Y года")
+        else:
+            if absolute_date == today + timedelta(days=-1):
+                return "вчера"
+            elif absolute_date == today + timedelta(days=-2):
+                return "позавчера"
+            else:
+                return absolute_date.strftime("%d %B %Y года")
 
 class TaskPosition(enum.Enum):
     @classmethod
@@ -155,10 +176,10 @@ class TasksList(TodoistScene):
 class CreateTask(TodoistScene):
     def reply(self, request):
         task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
-        task_due_date = SlotTime.from_request(request, intents.CREATE_TASK, 'when')
+        task_due_date = Time.from_request_slot(request, intents.CREATE_TASK, 'when')
         task = api.add_task(task_content, due_date=task_due_date.isoformat())
 
-        due_date = f"на {task.due.string}" if task.due.string else ""
+        due_date = f"на {Time.make_relative(task_due_date)}" if task_due_date else ""
         texts = ["Создала задачу", due_date, task.content]
 
         text = " ".join(texts)
