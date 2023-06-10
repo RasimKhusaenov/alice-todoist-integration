@@ -116,11 +116,11 @@ class TasksList(TodoistScene):
         tasks = api.get_tasks(filter=current_filter)
         tasks_count = len(tasks)
 
-        texts = [f"Сейчас у вас {tasks_count} задач в списке."]
+        texts = [f"Сейчас у вас {tasks_count} задач в списке:"]
 
         for index, task in enumerate(tasks):
             position = index + 1
-            texts.append(f"Задача №{position}: {task.content}.")
+            texts.append(f"\n- Задача №{position}: {task.content}.")
 
         text = " ".join(texts)
 
