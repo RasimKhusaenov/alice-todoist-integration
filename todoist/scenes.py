@@ -120,7 +120,7 @@ class TasksList(TodoistScene):
 
         for index, task in enumerate(tasks):
             position = index + 1
-            texts.append(f"\n- Задача №{position}: {task.content}.")
+            texts.append(f"\n- {position}: {task.content}.")
 
         text = " ".join(texts)
 
