@@ -5,6 +5,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Optional
 from datetime import date, timedelta
+import locale
 
 from todoist import intents
 from todoist.request import Request
@@ -12,6 +13,7 @@ from todoist.state import STATE_RESPONSE_KEY
 
 from todoist_api_python.api import TodoistAPI
 
+locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 api = TodoistAPI(os.environ.get('TODOIST_APP_TOKEN'))
 
 
@@ -58,16 +60,16 @@ class Time:
             elif absolute_date == today + timedelta(days=2):
                 return "послезавтра"
             elif absolute_date.year == today.year:
-                return absolute_date.strftime("%d %B")
+                return absolute_date.strftime("%d %B").lstrip("0")
             else:
-                return absolute_date.strftime("%d %B %Y года")
+                return absolute_date.strftime("%d %B %Y года").lstrip("0")
         else:
             if absolute_date == today + timedelta(days=-1):
                 return "вчера"
             elif absolute_date == today + timedelta(days=-2):
                 return "позавчера"
             else:
-                return absolute_date.strftime("%d %B %Y года")
+                return absolute_date.strftime("%d %B %Y года").lstrip("0")
 
 class TaskPosition(enum.Enum):
     @classmethod
@@ -175,12 +177,15 @@ class TasksList(TodoistScene):
 
 class CreateTask(TodoistScene):
     def reply(self, request):
-        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
+        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value'].capitalize()
+        task_content = task_content[0].upper() + task_content[1:]
+
         task_due_date = Time.from_request_slot(request, intents.CREATE_TASK, 'when')
         task = api.add_task(task_content, due_date=task_due_date.isoformat())
 
         due_date = f"на {Time.make_relative(task_due_date)}" if task_due_date else ""
-        texts = ["Создала задачу", due_date, task.content]
+        service_text = " ".join(["Создала задачу", due_date])
+        texts = [f"{service_text}:", f'"{task.content}"']
 
         text = " ".join(texts)
 
