@@ -46,7 +46,7 @@ class Time:
         else:
             year = time_from_intent['value'].get('year', today.year)
             month = time_from_intent['value'].get('month', today.month)
-            day = time_from_intent['value'].get('day', today.day)
+            day = time_from_intent['value'].get('day', 1)
             return date(year, month, day)
 
     @classmethod
