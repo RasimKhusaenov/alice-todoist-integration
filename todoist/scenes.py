@@ -49,13 +49,11 @@ class Scene(ABC):
         return cls.__name__
 
     """Генерация ответа сцены"""
-
     @abstractmethod
     def reply(self, request):
         raise NotImplementedError()
 
     """Проверка перехода к новой сцене"""
-
     def move(self, request: Request):
         next_scene = self.handle_local_intents(request)
         if next_scene is None:
@@ -104,8 +102,8 @@ class TodoistScene(Scene):
 
 class Welcome(TodoistScene):
     def reply(self, request: Request):
-        text = ('Привет! Я помогу управлять вашими задачами в Todoist.')
-        tts = ('Привет! Я помогу управлять вашими задачами в Tod+oist.')
+        text = 'Привет! Я помогу управлять вашими задачами в Todoist.'
+        tts = 'Привет! Я помогу управлять вашими задачами в Tod+oist.'
         return self.make_response(text, tts=tts)
 
     def handle_local_intents(self, request: Request):
@@ -114,34 +112,22 @@ class Welcome(TodoistScene):
 
 class TasksList(TodoistScene):
     def reply(self, request: Request):
-        current_index = TaskPosition.from_request(request)
-        current_position = current_index + 1
-        current_intent = intents.GET_NEAREST_TASKS if current_index == 0 else intents.GET_NEXT_TASK
-        current_filter = TaskFilter.from_request(request, current_intent).value
+        current_filter = TaskFilter.from_request(request, intents.GET_NEAREST_TASKS).value
         tasks = api.get_tasks(filter=current_filter)
         tasks_count = len(tasks)
 
-        texts = []
+        texts = [f"Сейчас у вас {tasks_count} задач в списке."]
 
-        if current_index == 0:
-            texts.append(f"Сейчас у вас {tasks_count} задач в списке.")
-        if tasks_count >= current_position:
-            texts.append(f"Задача №{current_position}: {tasks[current_index].content}.")
-        if current_position == tasks_count and tasks_count == 0:
-            texts.append("Хотите добавить?")
-        elif current_position == tasks_count and tasks_count > 0:
-            texts.append("Хотите добавить ещё задачу?")
+        for index, task in enumerate(tasks):
+            position = index + 1
+            texts.append(f"Задача №{position}: {task.content}.")
 
         text = " ".join(texts)
 
-        return self.make_response(text, state={
-            'position': {'value': current_position},
-            'time': {'value': current_filter}
-        })
+        return self.make_response(text)
 
     def handle_local_intents(self, request: Request):
-        if intents.GET_NEXT_TASK:
-            return TasksList()
+        pass
 
 
 def _list_scenes():
