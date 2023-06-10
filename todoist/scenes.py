@@ -4,6 +4,7 @@ import sys
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
+from datetime import date, timedelta
 
 from todoist import intents
 from todoist.request import Request
@@ -26,6 +27,25 @@ class TaskFilter(enum.Enum):
             return cls.TODAY
         elif current_filter == 'tomorrow':
             return cls.TOMORROW
+
+
+class SlotTime:
+    @classmethod
+    def from_request(cls, request: Request, intent_name: str, time_key: str) -> Optional[date]:
+        time_from_intent = request.intents[intent_name].get('slots', {}).get(time_key, {})
+
+        if time_from_intent['type'] != 'YANDEX.DATETIME':
+            return
+
+        today = date.today()
+        if time_from_intent['value']['day_is_relative']:
+            delta = timedelta(days=time_from_intent['value']['day'])
+            return today + delta
+        else:
+            year = time_from_intent['value'].get('year', today.year)
+            month = time_from_intent['value'].get('month', today.month)
+            day = time_from_intent['value'].get('day', today.day)
+            return date(year, month, day)
 
 
 class TaskPosition(enum.Enum):
@@ -135,9 +155,10 @@ class TasksList(TodoistScene):
 class CreateTask(TodoistScene):
     def reply(self, request):
         task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
-        task = api.add_task(task_content)
+        task_due_date = SlotTime.from_request(request, intents.CREATE_TASK, 'when')
+        task = api.add_task(task_content, due_date=task_due_date.isoformat())
 
-        due_date = f"на {task.due}" if task.due else ""
+        due_date = f"на {task.due.string}" if task.due.string else ""
         texts = ["Создала задачу", due_date, task.content]
 
         text = " ".join(texts)
