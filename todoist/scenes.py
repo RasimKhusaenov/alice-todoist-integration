@@ -44,9 +44,10 @@ class Time:
             delta = timedelta(days=time_from_intent['value']['day'])
             return today + delta
         else:
-            year = time_from_intent['value'].get('year', today.year)
-            month = time_from_intent['value'].get('month', today.month)
             day = time_from_intent['value'].get('day', 1)
+            month = time_from_intent['value'].get('month', today.month)
+            year = time_from_intent['value'].get('year', Time.default_year)
+
             return date(year, month, day)
 
     @classmethod
@@ -70,6 +71,19 @@ class Time:
                 return "позавчера"
             else:
                 return absolute_date.strftime("%d %B %Y года").lstrip("0")
+
+    @classmethod
+    def default_year(cls, month, day):
+        today = date.today()
+        is_next_month = month > today.month
+        is_current_month = month == today.month
+        is_past_day = day < today.day
+
+        if is_next_month or (is_current_month and not is_past_day):
+            return today.year
+        return today.year + 1
+
+
 
 class TaskPosition(enum.Enum):
     @classmethod
