@@ -4,6 +4,8 @@ import sys
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
+from datetime import date, timedelta
+import locale
 
 from todoist import intents
 from todoist.request import Request
@@ -11,6 +13,7 @@ from todoist.state import STATE_RESPONSE_KEY
 
 from todoist_api_python.api import TodoistAPI
 
+locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 api = TodoistAPI(os.environ.get('TODOIST_APP_TOKEN'))
 
 
@@ -26,6 +29,60 @@ class TaskFilter(enum.Enum):
             return cls.TODAY
         elif current_filter == 'tomorrow':
             return cls.TOMORROW
+
+
+class Time:
+    @classmethod
+    def from_request_slot(cls, request: Request, intent_name: str, time_key: str) -> Optional[date]:
+        time_from_intent = request.intents[intent_name].get('slots', {}).get(time_key, {})
+
+        if time_from_intent['type'] != 'YANDEX.DATETIME':
+            return
+
+        today = date.today()
+        if time_from_intent['value']['day_is_relative']:
+            delta = timedelta(days=time_from_intent['value']['day'])
+            return today + delta
+        else:
+            day = time_from_intent['value'].get('day', 1)
+            month = time_from_intent['value'].get('month', today.month)
+            year = time_from_intent['value'].get('year', Time.default_year)
+
+            return date(year, month, day)
+
+    @classmethod
+    def make_relative(cls, absolute_date: date) -> str:
+        today = date.today()
+        if absolute_date == today:
+            return "сегодня"
+        elif absolute_date > today:
+            if absolute_date == today + timedelta(days=1):
+                return "завтра"
+            elif absolute_date == today + timedelta(days=2):
+                return "послезавтра"
+            elif absolute_date.year == today.year:
+                return absolute_date.strftime("%d %B").lstrip("0")
+            else:
+                return absolute_date.strftime("%d %B %Y года").lstrip("0")
+        else:
+            if absolute_date == today + timedelta(days=-1):
+                return "вчера"
+            elif absolute_date == today + timedelta(days=-2):
+                return "позавчера"
+            else:
+                return absolute_date.strftime("%d %B %Y года").lstrip("0")
+
+    @classmethod
+    def default_year(cls, month, day):
+        today = date.today()
+        is_next_month = month > today.month
+        is_current_month = month == today.month
+        is_past_day = day < today.day
+
+        if is_next_month or (is_current_month and not is_past_day):
+            return today.year
+        return today.year + 1
+
 
 
 class TaskPosition(enum.Enum):
@@ -98,6 +155,8 @@ class TodoistScene(Scene):
     def handle_global_intents(self, request):
         if intents.GET_NEAREST_TASKS in request.intents:
             return TasksList()
+        elif intents.CREATE_TASK in request.intents:
+            return CreateTask()
 
 
 class Welcome(TodoistScene):
@@ -121,6 +180,26 @@ class TasksList(TodoistScene):
         for index, task in enumerate(tasks):
             position = index + 1
             texts.append(f"\n- {position}: {task.content}.")
+
+        text = " ".join(texts)
+
+        return self.make_response(text)
+
+    def handle_local_intents(self, request: Request):
+        pass
+
+
+class CreateTask(TodoistScene):
+    def reply(self, request):
+        task_content = request.intents[intents.CREATE_TASK]['slots']['what']['value']
+        task_content = task_content[0].upper() + task_content[1:]
+
+        task_due_date = Time.from_request_slot(request, intents.CREATE_TASK, 'when')
+        task = api.add_task(task_content, due_date=task_due_date.isoformat())
+
+        due_date = f"на {Time.make_relative(task_due_date)}" if task_due_date else ""
+        service_text = " ".join(["Создала задачу", due_date])
+        texts = [f"{service_text}:", f'"{task.content}"']
 
         text = " ".join(texts)
 
